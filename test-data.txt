@@ -1,0 +1,13 @@
+class	sentence
+positive	This is great!
+negative	This is not so good.
+positive	Awsome... that's great news!
+negative	Bagh... that's terrible.
+positive	Yah! great news.
+negative	That's terrible.
+positive	Great news.
+negative	terrible... just terrible.
+neutral	don't care.
+neutral	so so... don't really care.
+neutral	not that bad. 
+neutral	not good... not bad either...
