@@ -41,7 +41,7 @@ embeddings = dict( )
 embeddings = Word2Vec.load_word2vec_format( "GoogleNews-vectors-negative300.bin.gz" , binary=True ) 
 
 print ("Reading text data for classification and building representations...")
-data = [ ( row["sentence"] , row["class"]  ) for row in csv.DictReader(open("test-data.txt"), delimiter='\t', quoting=csv.QUOTE_NONE) ]
+data = [ ( row["sentence"] , row["label"]  ) for row in csv.DictReader(open("test-data.txt"), delimiter='\t', quoting=csv.QUOTE_NONE) ]
 random.shuffle( data )
 train_size = int(len(data) * percent)
 train_texts = [ txt for ( txt, label ) in data[0:train_size] ]
