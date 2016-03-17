@@ -6,6 +6,7 @@ import sklearn
 import gensim
 import random
 import scipy
+import keras
 from keras.preprocessing import sequence
 from keras.preprocessing.text import Tokenizer
 from keras.models import Sequential , Graph
@@ -45,7 +46,11 @@ def geodistance( coords1 , coords2 ):
   try: return distance.vincenty( ( lat1 , lon1 ) , ( lat2 , lon2 ) ).meters / 1000.0
   except: return distance.great_circle( ( lat1 , lon1 ) , ( lat2 , lon2 ) ).meters / 1000.0
 
-def geoloss( a , b ): return np.mean( [ geodistance( a[i] , b[i] ) for i in range(a.shape[0]) ] ) )
+def geoloss( a , b ): 
+  return keras.backend.mean(keras.backend.square(y_pred - y_true), axis=-1)
+#  aa = keras.backend.eval( a )
+#  bb = keras.backend.eval( b )
+#  return keras.backend.variable( np.mean( [ geodistance( aa[i] , bb[i] ) for i in range( aa.shape[0] ) ] ) )
 
 print ("")
 print ("Reading pre-trained word embeddings...")
@@ -97,6 +102,7 @@ else:
 #  print ("Mean error = " + repr( np.mean( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
 #  print ("Median error = " + repr( np.median( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )  
 
+print ("")
 print ("Method = MLP with bag-of-words features")
 np.random.seed(0)
 model = Sequential()
@@ -116,6 +122,7 @@ else:
   print ("Mean error = " + repr( np.mean( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
   print ("Median error = " + repr( np.median( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
 
+print ("")
 print ("Method = Stack of two LSTMs")
 np.random.seed(0)
 model = Sequential()
@@ -138,6 +145,7 @@ else:
   print ("Mean error = " + repr( np.mean( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )  
   print ("Median error = " + repr( np.median( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
 
+print ("")
 print ("Method = CNN from the paper 'Convolutional Neural Networks for Sentence Classification'")
 np.random.seed(0)
 nb_filter = embeddings_dim
@@ -164,6 +172,7 @@ else:
   print ("Mean error = " + repr( np.mean( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
   print ("Median error = " + repr( np.median( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )  
 
+print ("")
 print ("Method = Bidirectional LSTM")
 np.random.seed(0)
 model = Graph()
@@ -189,6 +198,7 @@ else:
   print ("Mean error = " + repr( np.mean( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
   print ("Median error = " + repr( np.median( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )  
 
+print ("")
 print ("Method = CNN-LSTM")
 np.random.seed(0)
 filter_length = 3
@@ -213,6 +223,7 @@ else:
   print ("Mean error = " + repr( np.mean( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
   print ("Median error = " + repr( np.median( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )  
 
+print ("")
 print ("Method = Linear ridge regression with doc2vec features")
 np.random.seed(0)
 class LabeledLineSentence(object):
@@ -223,7 +234,9 @@ model = Doc2Vec( alpha=0.025 , min_alpha=0.025 )
 sentences = LabeledLineSentence( train_texts + test_texts )
 model.build_vocab( sentences )
 model.train( sentences )
-for w in model.index2word.values(): model[w] = embeddings[w]
+for w in model.vocab.keys():
+  try : model[w] = embeddings[w]
+  except : continue
 for epoch in range(10):
     model.train(sentences)
     model.alpha -= 0.002
@@ -240,6 +253,7 @@ else:
   print ("Mean error = " + repr( np.mean( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
   print ("Median error = " + repr( np.median( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )  
 
+print ("")
 print ("Method = Kernel ridge regression with doc2vec features")
 np.random.seed(0)
 class LabeledLineSentence(object):
@@ -250,7 +264,9 @@ model = Doc2Vec( alpha=0.025 , min_alpha=0.025 )
 sentences = LabeledLineSentence( train_texts + test_texts )
 model.build_vocab( sentences )
 model.train( sentences )
-for w in model.index2word.values(): model[w] = embeddings[w]
+for w in model.vocab.keys():
+  try : model[w] = embeddings[w]
+  except : continue
 for epoch in range(10):
     model.train(sentences)
     model.alpha -= 0.002
@@ -267,6 +283,7 @@ else:
   print ("Mean error = " + repr( np.mean( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
   print ("Median error = " + repr( np.median( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )  
 
+print ("")
 print ("Method = MLP with doc2vec features")
 np.random.seed(0)
 class LabeledLineSentence(object):

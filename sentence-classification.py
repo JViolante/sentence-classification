@@ -212,7 +212,9 @@ model = Doc2Vec( alpha=0.025 , min_alpha=0.025 )
 sentences = LabeledLineSentence( train_texts + test_texts )
 model.build_vocab( sentences )
 model.train( sentences )
-for w in model.index2word.values(): model[w] = embeddings[w]
+for w in model.vocab.keys():
+  try: model[w] = embeddings[w] 
+  except : continue
 for epoch in range(10):
     model.train(sentences)
     model.alpha -= 0.002
@@ -235,7 +237,9 @@ model = Doc2Vec( alpha=0.025 , min_alpha=0.025 )
 sentences = LabeledLineSentence( train_texts + test_texts )
 model.build_vocab( sentences )
 model.train( sentences )
-for w in model.index2word.values(): model[w] = embeddings[w]
+for w in model.vocab.keys():
+  try: model[w] = embeddings[w] 
+  except : continue
 for epoch in range(10):
     model.train(sentences)
     model.alpha -= 0.002
@@ -260,7 +264,7 @@ sentences = LabeledLineSentence( sentences )
 model.build_vocab( sentences )
 model.train( sentences )
 for w in model.vocab.keys():
-  try : model[w] = embeddings[w]
+  try: model[w] = embeddings[w]
   except : continue
 for epoch in range(10):
     model.train(sentences)
