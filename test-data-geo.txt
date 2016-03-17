@@ -4165,8 +4165,7 @@ latitude	longitude	sentence
 38.0166667	23.7500000	Greece, more specifically in the city of Galatsion	
 36.4408333	28.2224998	Greece, more specifically in the city of Rodos	
 41.0855556	23.5497227	Greece, more specifically in the city of Serres	
-35.5122222	24.0155563	Greece, more specifically in the city of Chania	
-Greece";;"38.4636111, more specifically in the city of 23.5994453
+35.5122222	24.0155563	Greece, more specifically in the city of Chania 
 40.2719444	22.5025005	Greece, more specifically in the city of Katerini	
 40.8475000	25.8744450	Greece, more specifically in the city of Alexandroupolis	
 38.0500000	23.6833324	Greece, more specifically in the city of Petroupolis	
@@ -4218,7 +4217,6 @@ Greece";;"38.4636111, more specifically in the city of 23.5994453
 39.1605556	20.9852772	Greece, more specifically in the city of Arta	
 36.8933333	27.2888889	Greece, more specifically in the city of Kos	
 40.8005556	22.0472221	Greece, more specifically in the city of Edessa	
-Greece";;"38.3701939, more specifically in the city of 21.4295197
 37.8833333	23.7333336	Greece, more specifically in the city of Ellinikon	
 38.9500000	20.7500000	Greece, more specifically in the city of Preveza	
 37.9000000	23.8833332	Greece, more specifically in the city of Koropion	
@@ -10108,14 +10106,12 @@ Greece";;"38.3701939, more specifically in the city of 21.4295197
 49.0666667	33.4166679	Ukraine, more specifically in the city of Kremenchuk	
 49.7833333	30.1166668	Ukraine, more specifically in the city of Bila Tserkva	
 45.3583333	36.4758339	Ukraine, more specifically in the city of Kerch	
-Ukraine";;"48.8666667, more specifically in the city of 37.6166649
 48.6166667	22.2999992	Ukraine, more specifically in the city of Uzhhorod	
 48.5166667	35.8666649	Ukraine, more specifically in the city of Pavlohrad	
 48.9191667	38.4158325	Ukraine, more specifically in the city of Lisichansk	
 45.1972222	33.3558350	Ukraine, more specifically in the city of Yevpatoriya	
 48.2322222	38.2161102	Ukraine, more specifically in the city of Yenakiyeve	
-48.6697222	33.1205559	Ukraine, more specifically in the city of Oleksandriya	
-Ukraine";;"48.6666667, more specifically in the city of 26.5666676
+48.6697222	33.1205559	Ukraine, more specifically in the city of Oleksandriya 
 51.2333333	33.2000008	Ukraine, more specifically in the city of Konotop	
 48.5333333	37.7166672	Ukraine, more specifically in the city of Kostyantynivka	
 48.1330556	38.9324989	Ukraine, more specifically in the city of Krasnyy Luch	

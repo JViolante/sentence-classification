@@ -18,7 +18,7 @@ from gensim.models.word2vec import Word2Vec
 from gensim.models.doc2vec import Doc2Vec , TaggedDocument
 from word_movers_knn import WordMoversKNN
 from sklearn import preprocessing
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error , mean_absolute_error
 from geopy import distance
 
 # size of the word embeddings
@@ -39,14 +39,13 @@ is_geocoding = True
 #number of dimensions in regression problem
 reg_dimensions = 2
 
-def rmse( x , y ): return math.sqrt(mean_squared_error(x,y))
+def geodistance( coords1 , coords2 ):
+  lat1 , lon1 = coords1[ : 2]
+  lat2 , lon2 = coords2[ : 2]
+  try: return distance.vincenty( ( lat1 , lon1 ) , ( lat2 , lon2 ) ).meters / 1000.0
+  except: return distance.great_circle( ( lat1 , lon1 ) , ( lat2 , lon2 ) ).meters / 1000.0
 
-def geodistance( x , y ):   
-    try: return distance.vincenty( x , y ).meters / 1000.0
-    except: return distance.great_circle( x , y ).meters / 1000.0
-
-my_scorer = sklearn.metrics.make_scorer( rmse )
-if is_geocoding: my_scorer = sklearn.metrics.make_scorer( geodistance )
+def geoloss( a , b ): return np.mean( [ geodistance( a[i] , b[i] ) for i in range(a.shape[0]) ] ) )
 
 print ("")
 print ("Reading pre-trained word embeddings...")
@@ -79,16 +78,24 @@ print ("Method = Linear ridge regression with bag-of-words features")
 model = KernelRidge( kernel='linear' )
 model.fit( train_matrix , train_labels )
 results = model.predict( test_matrix )
-print ("Error = " + repr( sklearn.metrics.accuracy_score( test_labels , results )  ))
-print (sklearn.metrics.classification_report( test_labels , results ))
+if not(is_geocoding): 
+  print ("RMSE = " + repr( np.sqrt(mean_squared_error( test_labels , results )) ) )
+  print ("MAE = " + repr( mean_absolute_error( test_labels , results ) ) )
+else: 
+  print ("Mean error = " + repr( np.mean( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
+  print ("Median error = " + repr( np.median( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
 
 #print ("")
 #print ("Method = KNN with word mover's distance as described in 'From Word Embeddings To Document Distances'")
 #model = WordMoversKNN(W_embed=embedding_weights, n_neighbors=3)
 #model.fit( train_matrix , train_labels )
 #results = model.predict( test_matrix )
-#print ("Accuracy = " + repr( sklearn.metrics.accuracy_score( test_labels , results )  ))
-#print (sklearn.metrics.classification_report( test_labels , results ))
+#if not(is_geocoding):  
+#  print ("RMSE = " + repr( np.sqrt(mean_squared_error( test_labels , results )) ) )
+#  print ("MAE = " + repr( mean_absolute_error( test_labels , results ) ) )
+#else:
+#  print ("Mean error = " + repr( np.mean( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
+#  print ("Median error = " + repr( np.median( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )  
 
 print ("Method = MLP with bag-of-words features")
 np.random.seed(0)
@@ -98,32 +105,38 @@ model.add(Dropout(0.25))
 model.add(Dense(embeddings_dim, activation='relu'))
 model.add(Dropout(0.25))
 model.add(Dense(reg_dimensions, activation='sigmoid'))
-if not(is_geocoding): model.compile(loss='mean_absolute_error', optimizer='rmsprop')
-else: model.compile(loss=geodistance, optimizer='rmsprop')
+if not(is_geocoding): model.compile(loss='mean_absolute_error', optimizer='adam')
+else: model.compile(loss=geoloss, optimizer='adam')
 model.fit( train_matrix , train_labels , nb_epoch=10, batch_size=16)
 results = model.predict( test_matrix )
-print ("Error = " + repr( sklearn.metrics.accuracy_score( test_labels , results )  ))
-print (sklearn.metrics.classification_report( test_labels , results ))
+if not(is_geocoding):
+  print ("RMSE = " + repr( np.sqrt(mean_squared_error( test_labels , results )) ) )
+  print ("MAE = " + repr( mean_absolute_error( test_labels , results ) ) )
+else:
+  print ("Mean error = " + repr( np.mean( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
+  print ("Median error = " + repr( np.median( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
 
-print ("Method = Stack of three LSTMs")
+print ("Method = Stack of two LSTMs")
 np.random.seed(0)
 model = Sequential()
 model.add(Embedding(max_features, embeddings_dim, input_length=max_sent_len, mask_zero=True, weights=[embedding_weights] ))
 model.add(Dropout(0.25))
 model.add(LSTM(output_dim=embeddings_dim , activation='sigmoid', inner_activation='hard_sigmoid', return_sequences=True))
 model.add(Dropout(0.25))
-model.add(LSTM(output_dim=embeddings_dim , activation='sigmoid', inner_activation='hard_sigmoid', return_sequences=True)) 
-model.add(Dropout(0.25))
 model.add(LSTM(output_dim=embeddings_dim , activation='sigmoid', inner_activation='hard_sigmoid'))
 model.add(Dropout(0.25))
-model.add(Dense(reg_dimensions))
+model.add(Dense(embeddings_dim, reg_dimensions))
 model.add(Activation('sigmoid'))
-if not(is_geocoding): model.compile(loss='mean_absolute_error', optimizer='rmsprop')
-else: model.compile(loss=geodistance, optimizer='rmsprop')  
+if not(is_geocoding): model.compile(loss='mean_absolute_error', optimizer='adam')
+else: model.compile(loss=geodistance, optimizer='adam')  
 model.fit( train_sequences , train_labels , nb_epoch=10, batch_size=16)
 results = model.predict( test_sequences )
-print ("Error = " + repr( sklearn.metrics.accuracy_score( test_labels , results )  ))
-print (sklearn.metrics.classification_report( test_labels , results ))
+if not(is_geocoding): 
+  print ("RMSE = " + repr( np.sqrt(mean_squared_error( test_labels , results )) ) )  
+  print ("MAE = " + repr( mean_absolute_error( test_labels , results ) ) )  
+else: 
+  print ("Mean error = " + repr( np.mean( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )  
+  print ("Median error = " + repr( np.median( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
 
 print ("Method = CNN from the paper 'Convolutional Neural Networks for Sentence Classification'")
 np.random.seed(0)
@@ -140,12 +153,16 @@ model.add_node(Dropout(0.25), name='dropout', inputs=['flat_' + str(n) for n in 
 model.add_node(Dense(reg_dimensions, input_dim=nb_filter * len([3, 5, 7])), name='dense', input='dropout')
 model.add_node(Activation('sigmoid'), name='sigmoid', input='dense')
 model.add_output(name='output', input='sigmoid')
-if not(is_geocoding): model.compile(loss={'output': 'mean_absolute_error'}, optimizer='rmsprop')
-else: model.compile(loss={'output': geodistance}, optimizer='rmsprop') 
+if not(is_geocoding): model.compile(loss={'output': 'mean_absolute_error'}, optimizer='adam')
+else: model.compile(loss={'output': geodistance}, optimizer='adam') 
 model.fit({'input': train_sequences, 'output': train_labels}, batch_size=16, nb_epoch=10)
 results = np.array(model.predict({'input': test_sequences}, batch_size=16)['output'])
-print ("Error = " + repr( sklearn.metrics.accuracy_score( test_labels , results )  ))
-print (sklearn.metrics.classification_report( test_labels , results ))
+if not(is_geocoding):  
+  print ("RMSE = " + repr( np.sqrt(mean_squared_error( test_labels , results )) ) )
+  print ("MAE = " + repr( mean_absolute_error( test_labels , results ) ) )
+else:  
+  print ("Mean error = " + repr( np.mean( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
+  print ("Median error = " + repr( np.median( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )  
 
 print ("Method = Bidirectional LSTM")
 np.random.seed(0)
@@ -159,14 +176,18 @@ model.add_node(LSTM(embeddings_dim, activation='sigmoid', inner_activation='hard
 model.add_node(Dropout(0.25), name="dropout2", input='backward1') 
 model.add_node(LSTM(embeddings_dim, activation='sigmoid', inner_activation='hard_sigmoid', go_backwards=True), name='backward2', input='backward1')
 model.add_node(Dropout(0.25), name='dropout', inputs=['forward2', 'backward2'])
-model.add_node(Dense(reg_dimensions, activation='sigmoid'), name='sigmoid', input='dropout')
+model.add_node(Dense(embeddings_dim, reg_dimensions, activation='sigmoid'), name='sigmoid', input='dropout')
 model.add_output(name='output', input='sigmoid')
-if not(is_geocoding): model.compile(loss={'output': 'mean_absolute_error'}, optimizer='rmsprop')
-else: model.compile(loss={'output': geodistance}, optimizer='rmsprop')
+if not(is_geocoding): model.compile(loss={'output': 'mean_absolute_error'}, optimizer='adam')
+else: model.compile(loss={'output': geodistance}, optimizer='adam')
 model.fit({'input': train_sequences, 'output': train_labels}, batch_size=16, nb_epoch=10)
 results = np.array(model.predict({'input': test_sequences}, batch_size=16)['output'])
-print ("Error = " + repr( sklearn.metrics.accuracy_score( test_labels , results )  ))
-print (sklearn.metrics.classification_report( test_labels , results ))
+if not(is_geocoding):  
+  print ("RMSE = " + repr( np.sqrt(mean_squared_error( test_labels , results )) ) )
+  print ("MAE = " + repr( mean_absolute_error( test_labels , results ) ) )
+else:  
+  print ("Mean error = " + repr( np.mean( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
+  print ("Median error = " + repr( np.median( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )  
 
 print ("Method = CNN-LSTM")
 np.random.seed(0)
@@ -179,14 +200,18 @@ model.add(Dropout(0.25))
 model.add(Convolution1D(nb_filter=nb_filter, filter_length=filter_length, border_mode='valid', activation='relu', subsample_length=1))
 model.add(MaxPooling1D(pool_length=pool_length))
 model.add(LSTM(embeddings_dim))
-model.add(Dense(reg_dimensions))
+model.add(Dense(embeddings_dim, reg_dimensions))
 model.add(Activation('sigmoid'))
-if not(is_geocoding): model.compile(loss='mean_absolute_error', optimizer='rmsprop')
-else: model.compile(loss=geodistance, optimizer='rmsprop')  
+if not(is_geocoding): model.compile(loss='mean_absolute_error', optimizer='adam')
+else: model.compile(loss=geodistance, optimizer='adam')  
 model.fit( train_sequences , train_labels , nb_epoch=10, batch_size=16)
 results = model.predict( test_sequences )
-print ("Error = " + repr( sklearn.metrics.accuracy_score( test_labels , results ) ) )
-print (sklearn.metrics.classification_report( test_labels , results ))
+if not(is_geocoding):  
+  print ("RMSE = " + repr( np.sqrt(mean_squared_error( test_labels , results )) ) )
+  print ("MAE = " + repr( mean_absolute_error( test_labels , results ) ) )
+else:  
+  print ("Mean error = " + repr( np.mean( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
+  print ("Median error = " + repr( np.median( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )  
 
 print ("Method = Linear ridge regression with doc2vec features")
 np.random.seed(0)
@@ -208,8 +233,12 @@ test_rep = np.array( [ model["SENTENCE_%s" % (i + train_matrix.shape[0]) ] for i
 model = KernelRidge( kernel='linear' )
 model.fit( train_rep , train_labels )
 results = model.predict( test_rep )
-print ("Error = " + repr( sklearn.metrics.accuracy_score( test_labels , results )  ))
-print (sklearn.metrics.classification_report( test_labels , results ))
+if not(is_geocoding):  
+  print ("RMSE = " + repr( np.sqrt(mean_squared_error( test_labels , results )) ) )
+  print ("MAE = " + repr( mean_absolute_error( test_labels , results ) ) )
+else:  
+  print ("Mean error = " + repr( np.mean( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
+  print ("Median error = " + repr( np.median( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )  
 
 print ("Method = Kernel ridge regression with doc2vec features")
 np.random.seed(0)
@@ -231,8 +260,12 @@ test_rep = np.array( [ model["SENTENCE_%s" % (i + train_matrix.shape[0]) ] for i
 model = KernelRidge( kernel='rbf' )
 model.fit( train_rep , train_labels )
 results = model.predict( test_rep )
-print ("Error = " + repr( sklearn.metrics.accuracy_score( test_labels , results )  ))
-print (sklearn.metrics.classification_report( test_labels , results ))
+if not(is_geocoding):  
+  print ("RMSE = " + repr( np.sqrt(mean_squared_error( test_labels , results )) ) )
+  print ("MAE = " + repr( mean_absolute_error( test_labels , results ) ) )
+else:  
+  print ("Mean error = " + repr( np.mean( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
+  print ("Median error = " + repr( np.median( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )  
 
 print ("Method = MLP with doc2vec features")
 np.random.seed(0)
@@ -259,10 +292,14 @@ model.add(Dense(embeddings_dim, input_dim=train_rep.shape[1], init='uniform', ac
 model.add(Dropout(0.25))
 model.add(Dense(embeddings_dim, activation='relu'))
 model.add(Dropout(0.25))
-model.add(Dense(reg_dimensions, activation='sigmoid'))
-if not(is_geocoding): model.compile(loss='mean_absolute_error', optimizer='rmsprop')
-else: model.compile(loss=geodistance, optimizer='rmsprop')
+model.add(Dense(embeddings_dim, reg_dimensions, activation='sigmoid'))
+if not(is_geocoding): model.compile(loss='mean_absolute_error', optimizer='adam')
+else: model.compile(loss=geodistance, optimizer='adam')
 model.fit( train_rep , train_labels , nb_epoch=10, batch_size=16)
 results = model.predict( test_rep )
-print ("Error = " + repr( sklearn.metrics.accuracy_score( test_labels , results )  ))
-print (sklearn.metrics.classification_report( test_labels , results ))
+if not(is_geocoding):  
+  print ("RMSE = " + repr( np.sqrt(mean_squared_error( test_labels , results )) ) )
+  print ("MAE = " + repr( mean_absolute_error( test_labels , results ) ) )
+else:  
+  print ("Mean error = " + repr( np.mean( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
+  print ("Median error = " + repr( np.median( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) ) 
