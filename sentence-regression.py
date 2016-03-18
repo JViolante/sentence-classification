@@ -1,4 +1,5 @@
 import numpy as np
+import theano
 import math
 import csv
 import keras
@@ -47,10 +48,18 @@ def geodistance( coords1 , coords2 ):
   except: return distance.great_circle( ( lat1 , lon1 ) , ( lat2 , lon2 ) ).meters / 1000.0
 
 def geoloss( a , b ): 
-  return keras.backend.mean(keras.backend.square(y_pred - y_true), axis=-1)
-#  aa = keras.backend.eval( a )
-#  bb = keras.backend.eval( b )
-#  return keras.backend.variable( np.mean( [ geodistance( aa[i] , bb[i] ) for i in range( aa.shape[0] ) ] ) )
+#  return keras.backend.mean(keras.backend.square(a - b), axis=-1)
+  aa = theano.tensor.deg2rad( a )
+  bb = theano.tensor.deg2rad( b )
+  sin_lat1 = theano.tensor.sin( aa[:,0] )
+  cos_lat1 = theano.tensor.cos( aa[:,0] )
+  sin_lat2 = theano.tensor.sin( bb[:,0] )
+  cos_lat2 = theano.tensor.cos( bb[:,0] )
+  delta_lng = bb[:,1] - aa[:,1]
+  cos_delta_lng = theano.tensor.cos(delta_lng)
+  sin_delta_lng = theano.tensor.sin(delta_lng)
+  d = theano.tensor.arctan2(theano.tensor.sqrt((cos_lat2 * sin_delta_lng) ** 2 + (cos_lat1 * sin_lat2 - sin_lat1 * cos_lat2 * cos_delta_lng) ** 2), sin_lat1 * sin_lat2 + cos_lat1 * cos_lat2 * cos_delta_lng )
+  return theano.tensor.mean( 6371.009 * d )
 
 print ("")
 print ("Reading pre-trained word embeddings...")
@@ -132,10 +141,10 @@ model.add(LSTM(output_dim=embeddings_dim , activation='sigmoid', inner_activatio
 model.add(Dropout(0.25))
 model.add(LSTM(output_dim=embeddings_dim , activation='sigmoid', inner_activation='hard_sigmoid'))
 model.add(Dropout(0.25))
-model.add(Dense(embeddings_dim, reg_dimensions))
+model.add(Dense(reg_dimensions))
 model.add(Activation('sigmoid'))
 if not(is_geocoding): model.compile(loss='mean_absolute_error', optimizer='adam')
-else: model.compile(loss=geodistance, optimizer='adam')  
+else: model.compile(loss=geoloss, optimizer='adam')  
 model.fit( train_sequences , train_labels , nb_epoch=10, batch_size=16)
 results = model.predict( test_sequences )
 if not(is_geocoding): 
@@ -162,7 +171,7 @@ model.add_node(Dense(reg_dimensions, input_dim=nb_filter * len([3, 5, 7])), name
 model.add_node(Activation('sigmoid'), name='sigmoid', input='dense')
 model.add_output(name='output', input='sigmoid')
 if not(is_geocoding): model.compile(loss={'output': 'mean_absolute_error'}, optimizer='adam')
-else: model.compile(loss={'output': geodistance}, optimizer='adam') 
+else: model.compile(loss={'output': geoloss}, optimizer='adam') 
 model.fit({'input': train_sequences, 'output': train_labels}, batch_size=16, nb_epoch=10)
 results = np.array(model.predict({'input': test_sequences}, batch_size=16)['output'])
 if not(is_geocoding):  
@@ -185,10 +194,10 @@ model.add_node(LSTM(embeddings_dim, activation='sigmoid', inner_activation='hard
 model.add_node(Dropout(0.25), name="dropout2", input='backward1') 
 model.add_node(LSTM(embeddings_dim, activation='sigmoid', inner_activation='hard_sigmoid', go_backwards=True), name='backward2', input='backward1')
 model.add_node(Dropout(0.25), name='dropout', inputs=['forward2', 'backward2'])
-model.add_node(Dense(embeddings_dim, reg_dimensions, activation='sigmoid'), name='sigmoid', input='dropout')
+model.add_node(Dense(reg_dimensions, activation='sigmoid'), name='sigmoid', input='dropout')
 model.add_output(name='output', input='sigmoid')
 if not(is_geocoding): model.compile(loss={'output': 'mean_absolute_error'}, optimizer='adam')
-else: model.compile(loss={'output': geodistance}, optimizer='adam')
+else: model.compile(loss={'output': geoloss}, optimizer='adam')
 model.fit({'input': train_sequences, 'output': train_labels}, batch_size=16, nb_epoch=10)
 results = np.array(model.predict({'input': test_sequences}, batch_size=16)['output'])
 if not(is_geocoding):  
@@ -210,10 +219,10 @@ model.add(Dropout(0.25))
 model.add(Convolution1D(nb_filter=nb_filter, filter_length=filter_length, border_mode='valid', activation='relu', subsample_length=1))
 model.add(MaxPooling1D(pool_length=pool_length))
 model.add(LSTM(embeddings_dim))
-model.add(Dense(embeddings_dim, reg_dimensions))
+model.add(Dense(reg_dimensions))
 model.add(Activation('sigmoid'))
 if not(is_geocoding): model.compile(loss='mean_absolute_error', optimizer='adam')
-else: model.compile(loss=geodistance, optimizer='adam')  
+else: model.compile(loss=geoloss, optimizer='adam')  
 model.fit( train_sequences , train_labels , nb_epoch=10, batch_size=16)
 results = model.predict( test_sequences )
 if not(is_geocoding):  
@@ -229,7 +238,7 @@ np.random.seed(0)
 class LabeledLineSentence(object):
   def __init__(self, data ): self.data = data
   def __iter__(self):
-    for uid, line in enumerate( self.data ): yield TaggedDocument( line.split(" ") , ["SENTENCE_%s" % uid] )
+    for uid, line in enumerate( self.data ): yield TaggedDocument( line.split(" ") , ["S_%s" % uid] )
 model = Doc2Vec( alpha=0.025 , min_alpha=0.025 )
 sentences = LabeledLineSentence( train_texts + test_texts )
 model.build_vocab( sentences )
@@ -241,8 +250,8 @@ for epoch in range(10):
     model.train(sentences)
     model.alpha -= 0.002
     model.min_alpha = model.alpha
-train_rep = np.array( [ model["SENTENCE_%s" % i] for i in range( train_matrix.shape[0] ) ] )
-test_rep = np.array( [ model["SENTENCE_%s" % (i + train_matrix.shape[0]) ] for i in range( test_matrix.shape[0] ) ] )
+train_rep = np.array( [ model.docvecs[i] for i in range( train_matrix.shape[0] ) ] )
+test_rep = np.array( [ model.docvecs[i + train_matrix.shape[0]] for i in range( test_matrix.shape[0] ) ] )
 model = KernelRidge( kernel='linear' )
 model.fit( train_rep , train_labels )
 results = model.predict( test_rep )
@@ -259,7 +268,7 @@ np.random.seed(0)
 class LabeledLineSentence(object):
   def __init__(self, data ): self.data = data
   def __iter__(self):
-    for uid, line in enumerate( self.data ): yield TaggedDocument( line.split(" ") , ["SENTENCE_%s" % uid] )
+    for uid, line in enumerate( self.data ): yield TaggedDocument( line.split(" ") , ["S_%s" % uid] )
 model = Doc2Vec( alpha=0.025 , min_alpha=0.025 )
 sentences = LabeledLineSentence( train_texts + test_texts )
 model.build_vocab( sentences )
@@ -271,8 +280,8 @@ for epoch in range(10):
     model.train(sentences)
     model.alpha -= 0.002
     model.min_alpha = model.alpha
-train_rep = np.array( [ model["SENTENCE_%s" % i] for i in range( train_matrix.shape[0] ) ] )
-test_rep = np.array( [ model["SENTENCE_%s" % (i + train_matrix.shape[0]) ] for i in range( test_matrix.shape[0] ) ] )
+train_rep = np.array( [ model.docvecs[i] for i in range( train_matrix.shape[0] ) ] )
+test_rep = np.array( [ model.docvecs[i + train_matrix.shape[0]] for i in range( test_matrix.shape[0] ) ] )
 model = KernelRidge( kernel='rbf' )
 model.fit( train_rep , train_labels )
 results = model.predict( test_rep )
@@ -309,9 +318,9 @@ model.add(Dense(embeddings_dim, input_dim=train_rep.shape[1], init='uniform', ac
 model.add(Dropout(0.25))
 model.add(Dense(embeddings_dim, activation='relu'))
 model.add(Dropout(0.25))
-model.add(Dense(embeddings_dim, reg_dimensions, activation='sigmoid'))
+model.add(Dense(reg_dimensions, activation='sigmoid'))
 if not(is_geocoding): model.compile(loss='mean_absolute_error', optimizer='adam')
-else: model.compile(loss=geodistance, optimizer='adam')
+else: model.compile(loss=geoloss, optimizer='adam')
 model.fit( train_rep , train_labels , nb_epoch=10, batch_size=16)
 results = model.predict( test_rep )
 if not(is_geocoding):  

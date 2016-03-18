@@ -207,7 +207,7 @@ np.random.seed(0)
 class LabeledLineSentence(object):
   def __init__(self, data ): self.data = data
   def __iter__(self):
-    for uid, line in enumerate( self.data ): yield TaggedDocument( line.split(" ") , ["SENTENCE_%s" % uid] )
+    for uid, line in enumerate( self.data ): yield TaggedDocument( line.split(" ") , ["S_%s" % uid] )
 model = Doc2Vec( alpha=0.025 , min_alpha=0.025 )
 sentences = LabeledLineSentence( train_texts + test_texts )
 model.build_vocab( sentences )
@@ -219,8 +219,8 @@ for epoch in range(10):
     model.train(sentences)
     model.alpha -= 0.002
     model.min_alpha = model.alpha
-train_rep = np.array( [ model["SENTENCE_%s" % i] for i in range( train_matrix.shape[0] ) ] )
-test_rep = np.array( [ model["SENTENCE_%s" % (i + train_matrix.shape[0]) ] for i in range( test_matrix.shape[0] ) ] )
+train_rep = np.array( [ model.docvecs[i] for i in range( train_matrix.shape[0] ) ] )
+test_rep = np.array( [ model.docvecs[i + train_matrix.shape[0]] for i in range( test_matrix.shape[0] ) ] )
 model = LinearSVC( random_state=0 )
 model.fit( train_rep , train_labels )
 results = model.predict( test_rep )
@@ -232,7 +232,7 @@ np.random.seed(0)
 class LabeledLineSentence(object):
   def __init__(self, data ): self.data = data
   def __iter__(self):
-    for uid, line in enumerate( self.data ): yield TaggedDocument( line.split(" ") , ["SENTENCE_%s" % uid] )
+    for uid, line in enumerate( self.data ): yield TaggedDocument( line.split(" ") , ["S_%s" % uid] )
 model = Doc2Vec( alpha=0.025 , min_alpha=0.025 )
 sentences = LabeledLineSentence( train_texts + test_texts )
 model.build_vocab( sentences )
@@ -244,8 +244,8 @@ for epoch in range(10):
     model.train(sentences)
     model.alpha -= 0.002
     model.min_alpha = model.alpha
-train_rep = np.array( [ model["SENTENCE_%s" % i] for i in range( train_matrix.shape[0] ) ] )
-test_rep = np.array( [ model["SENTENCE_%s" % (i + train_matrix.shape[0]) ] for i in range( test_matrix.shape[0] ) ] )
+train_rep = np.array( [ model.docvecs[i] for i in range( train_matrix.shape[0] ) ] )
+test_rep = np.array( [ model.docvecs[i + train_matrix.shape[0]] for i in range( test_matrix.shape[0] ) ] )
 model = SVC( random_state=0 , kernel='rbf' )
 model.fit( train_rep , train_labels )
 results = model.predict( test_rep )
