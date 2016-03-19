@@ -48,7 +48,6 @@ def geodistance( coords1 , coords2 ):
   except: return distance.great_circle( ( lat1 , lon1 ) , ( lat2 , lon2 ) ).meters / 1000.0
 
 def geoloss( a , b ): 
-#  return keras.backend.mean(keras.backend.square(a - b), axis=-1)
   aa = theano.tensor.deg2rad( a )
   bb = theano.tensor.deg2rad( b )
   sin_lat1 = theano.tensor.sin( aa[:,0] )
@@ -59,15 +58,21 @@ def geoloss( a , b ):
   cos_delta_lng = theano.tensor.cos(delta_lng)
   sin_delta_lng = theano.tensor.sin(delta_lng)
   d = theano.tensor.arctan2(theano.tensor.sqrt((cos_lat2 * sin_delta_lng) ** 2 + (cos_lat1 * sin_lat2 - sin_lat1 * cos_lat2 * cos_delta_lng) ** 2), sin_lat1 * sin_lat2 + cos_lat1 * cos_lat2 * cos_delta_lng )
-  return theano.tensor.mean( 6371.009 * d )
+  return theano.tensor.mean( 6371.0088 * d , axis = -1 )
 
 print ("")
 print ("Reading pre-trained word embeddings...")
 embeddings = dict( )
 embeddings = Word2Vec.load_word2vec_format( "GoogleNews-vectors-negative300.bin.gz" , binary=True ) 
 
-print ("Reading text data for classification and building representations...")
-data = [ ( row["sentence"] , ( float( row["latitude"] ) , float( row["longitude"] ) ) ) for row in csv.DictReader(open("test-data-geo.txt"), delimiter='\t', quoting=csv.QUOTE_NONE) ]
+print ("Reading text data for regression and building representations...")
+#data = [ ( row["sentence"] , ( float( row["latitude"] ) , float( row["longitude"] ) ) ) for row in csv.DictReader(open("test-data-geo.txt"), delimiter='\t', quoting=csv.QUOTE_NONE) ]
+#is_geocoding = True
+#reg_dimensions = 2
+data = [ ( row["sentence"] , float( row["rating"] )  ) for row in csv.DictReader(open("test-data-rated.txt"), delimiter='\t', quoting=csv.QUOTE_NONE) ]
+is_geocoding = False
+reg_dimensions = 1
+
 random.shuffle( data )
 train_size = int(len(data) * percent)
 train_texts = [ txt for ( txt, label ) in data[0:train_size] ]
@@ -86,7 +91,6 @@ for word,index in tokenizer.word_index.items():
     try: embedding_weights[index,:] = embeddings[word]
     except: embedding_weights[index,:] = np.random.rand( 1 , embeddings_dim )
 
-
 print ("")
 print ("Method = Linear ridge regression with bag-of-words features")
 model = KernelRidge( kernel='linear' )
@@ -98,18 +102,6 @@ if not(is_geocoding):
 else: 
   print ("Mean error = " + repr( np.mean( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
   print ("Median error = " + repr( np.median( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
-
-#print ("")
-#print ("Method = KNN with word mover's distance as described in 'From Word Embeddings To Document Distances'")
-#model = WordMoversKNN(W_embed=embedding_weights, n_neighbors=3)
-#model.fit( train_matrix , train_labels )
-#results = model.predict( test_matrix )
-#if not(is_geocoding):  
-#  print ("RMSE = " + repr( np.sqrt(mean_squared_error( test_labels , results )) ) )
-#  print ("MAE = " + repr( mean_absolute_error( test_labels , results ) ) )
-#else:
-#  print ("Mean error = " + repr( np.mean( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )
-#  print ("Median error = " + repr( np.median( [ geodistance( results[i] , test_labels[i] ) for i in range(results.shape[0]) ] ) ) )  
 
 print ("")
 print ("Method = MLP with bag-of-words features")
