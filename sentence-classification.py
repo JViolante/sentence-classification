@@ -94,7 +94,6 @@ test_matrix = test_matrix[0: train_matrix.shape[0], 0: test_matrix.shape[1] - mo
 print ("Accuracy = " + repr( sklearn.metrics.accuracy_score( test_labels , results )  ))
 print (sklearn.metrics.classification_report( test_labels , results ))
 
-print ("")
 print ("Method = KNN with word mover's distance as described in 'From Word Embeddings To Document Distances'")
 model = WordMoversKNN(W_embed=embedding_weights , n_neighbors=1)
 model.fit( train_matrix , train_labels )
