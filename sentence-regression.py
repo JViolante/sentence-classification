@@ -66,12 +66,12 @@ embeddings = dict( )
 embeddings = Word2Vec.load_word2vec_format( "GoogleNews-vectors-negative300.bin.gz" , binary=True ) 
 
 print ("Reading text data for regression and building representations...")
-#data = [ ( row["sentence"] , ( float( row["latitude"] ) , float( row["longitude"] ) ) ) for row in csv.DictReader(open("test-data-geo.txt"), delimiter='\t', quoting=csv.QUOTE_NONE) ]
-#is_geocoding = True
-#reg_dimensions = 2
-data = [ ( row["sentence"] , float( row["rating"] )  ) for row in csv.DictReader(open("test-data-rated.txt"), delimiter='\t', quoting=csv.QUOTE_NONE) ]
-is_geocoding = False
-reg_dimensions = 1
+data = [ ( row["message"] , ( float( row["latitude"] ) , float( row["longitude"] ) ) ) for row in csv.DictReader(open("test-data-geo.txt"), delimiter='\t', quoting=csv.QUOTE_NONE) ]
+is_geocoding = True
+reg_dimensions = 2
+#data = [ ( row["sentence"] , float( row["rating"] )  ) for row in csv.DictReader(open("test-data-rated.txt"), delimiter='\t', quoting=csv.QUOTE_NONE) ]
+#is_geocoding = False
+#reg_dimensions = 1
 
 random.shuffle( data )
 train_size = int(len(data) * percent)
@@ -114,7 +114,7 @@ model.add(Dropout(0.25))
 model.add(Dense(reg_dimensions, activation='sigmoid'))
 if not(is_geocoding): model.compile(loss='mean_absolute_error', optimizer='adam')
 else: model.compile(loss=geoloss, optimizer='adam')
-model.fit( train_matrix , train_labels , nb_epoch=10, batch_size=16)
+model.fit( train_matrix , train_labels , nb_epoch=30, batch_size=16)
 results = model.predict( test_matrix )
 if not(is_geocoding):
   print ("RMSE = " + repr( np.sqrt(mean_squared_error( test_labels , results )) ) )
@@ -137,7 +137,7 @@ model.add(Dense(reg_dimensions))
 model.add(Activation('sigmoid'))
 if not(is_geocoding): model.compile(loss='mean_absolute_error', optimizer='adam')
 else: model.compile(loss=geoloss, optimizer='adam')  
-model.fit( train_sequences , train_labels , nb_epoch=10, batch_size=16)
+model.fit( train_sequences , train_labels , nb_epoch=30, batch_size=16)
 results = model.predict( test_sequences )
 if not(is_geocoding): 
   print ("RMSE = " + repr( np.sqrt(mean_squared_error( test_labels , results )) ) )  
@@ -164,7 +164,7 @@ model.add_node(Activation('sigmoid'), name='sigmoid', input='dense')
 model.add_output(name='output', input='sigmoid')
 if not(is_geocoding): model.compile(loss={'output': 'mean_absolute_error'}, optimizer='adam')
 else: model.compile(loss={'output': geoloss}, optimizer='adam') 
-model.fit({'input': train_sequences, 'output': train_labels}, batch_size=16, nb_epoch=10)
+model.fit({'input': train_sequences, 'output': train_labels}, batch_size=16, nb_epoch=30)
 results = np.array(model.predict({'input': test_sequences}, batch_size=16)['output'])
 if not(is_geocoding):  
   print ("RMSE = " + repr( np.sqrt(mean_squared_error( test_labels , results )) ) )
@@ -190,7 +190,7 @@ model.add_node(Dense(reg_dimensions, activation='sigmoid'), name='sigmoid', inpu
 model.add_output(name='output', input='sigmoid')
 if not(is_geocoding): model.compile(loss={'output': 'mean_absolute_error'}, optimizer='adam')
 else: model.compile(loss={'output': geoloss}, optimizer='adam')
-model.fit({'input': train_sequences, 'output': train_labels}, batch_size=16, nb_epoch=10)
+model.fit({'input': train_sequences, 'output': train_labels}, batch_size=16, nb_epoch=30)
 results = np.array(model.predict({'input': test_sequences}, batch_size=16)['output'])
 if not(is_geocoding):  
   print ("RMSE = " + repr( np.sqrt(mean_squared_error( test_labels , results )) ) )
@@ -215,7 +215,7 @@ model.add(Dense(reg_dimensions))
 model.add(Activation('sigmoid'))
 if not(is_geocoding): model.compile(loss='mean_absolute_error', optimizer='adam')
 else: model.compile(loss=geoloss, optimizer='adam')  
-model.fit( train_sequences , train_labels , nb_epoch=10, batch_size=16)
+model.fit( train_sequences , train_labels , nb_epoch=30, batch_size=16)
 results = model.predict( test_sequences )
 if not(is_geocoding):  
   print ("RMSE = " + repr( np.sqrt(mean_squared_error( test_labels , results )) ) )
@@ -313,7 +313,7 @@ model.add(Dropout(0.25))
 model.add(Dense(reg_dimensions, activation='sigmoid'))
 if not(is_geocoding): model.compile(loss='mean_absolute_error', optimizer='adam')
 else: model.compile(loss=geoloss, optimizer='adam')
-model.fit( train_rep , train_labels , nb_epoch=10, batch_size=16)
+model.fit( train_rep , train_labels , nb_epoch=30, batch_size=16)
 results = model.predict( test_rep )
 if not(is_geocoding):  
   print ("RMSE = " + repr( np.sqrt(mean_squared_error( test_labels , results )) ) )

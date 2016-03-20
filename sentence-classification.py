@@ -23,7 +23,7 @@ from word_movers_knn import WordMoversKNN
 embeddings_dim = 300
 
 # maximum number of words to consider in the representations
-max_features = 25000
+max_features = 30000
 
 # maximum length of a sentence
 max_sent_len = 50
@@ -95,7 +95,7 @@ print ("Accuracy = " + repr( sklearn.metrics.accuracy_score( test_labels , resul
 print (sklearn.metrics.classification_report( test_labels , results ))
 
 print ("Method = KNN with word mover's distance as described in 'From Word Embeddings To Document Distances'")
-model = WordMoversKNN(W_embed=embedding_weights , n_neighbors=1)
+model = WordMoversKNN(W_embed=embedding_weights , n_neighbors=3)
 model.fit( train_matrix , train_labels )
 results = model.predict( test_matrix )
 print ("Accuracy = " + repr( sklearn.metrics.accuracy_score( test_labels , results )  ))
