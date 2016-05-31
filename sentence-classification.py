@@ -65,6 +65,12 @@ train_labels = le.transform( train_labels )
 test_labels = le.transform( test_labels )
 print "Classes that are considered in the problem : " + repr( le.classes_ )
 
+print('Convert class vector to binary class matrix (for use with categorical_crossentropy)')
+Y_train = np_utils.to_categorical(train_labels, num_classes)
+Y_test = np_utils.to_categorical(test_labels, num_classes)
+print('Y_train shape:', Y_train.shape)
+print('Y_test shape:', Y_test.shape)
+
 print ("")
 print ("Method = NB with bag-of-words features")
 model = MultinomialNB( )
